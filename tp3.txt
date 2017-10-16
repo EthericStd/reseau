@@ -1,0 +1,42 @@
+SMTP et POP3 :
+Pour le l'envoi du mail, le protocole SMTP est utilisé. L'échange de passe en 2 temps:        -premièrement, le client demande au serveur DNS (localisé sur internalnet) qui à l'adresse local.demo. Au bout de 1 échanges (mais il y en a 2), le client connait l'adresse ip de la machine : 192.168.1.1, server.local.demo.
+-deuxièmement, il y a un échange de trames SMTP/TCP avec le serveur SMTP (qui n'est d'autre que 192.168.1.1, le destinataire) de cette manière : 
+	-demande de synchronisation au serveur
+	-demande de synchornisation au client, accusé de réception de la première demande du client
+	-accusé de réception de la demande du serveur
+	-le serveur envoie le code 220 : server ready
+	-accusé de réception du client
+	-le client envoie la commande EHLO pour initer l'échange
+	-le serveur renvoie le code 250 : requested mail action ok
+	-le client envoie une commande avec toutes les informations du mail qu'il veut envoyer
+	-serveur renvoie code 250 : OK
+	-le client envoie la commande QUIT pour fermer la connexion
+	-le serveur repond code 250 : OK et code 221 : BYE.
+	-puis 1 échange de trames TCP pour les accusés de réception.
+
+Pour la réception, le protocole POP3 est utilisé, on utilise fetchmail pour récupérer le mail envoyé (ce qui constitue l'échange de trames) puis mutt pour le lire:
+	-demande de synchronisation au serveur
+	-demande de synchornisation au client, accusé de réception de la première demande du client
+	-accusé de réception de la demande du serveur
+	-le serveur envoie : +OK, le message de base pour signaler que tout va bien.
+	-accusé de réception du client
+	-le client envoie la commande CAPA pour vérifier si le serveur support la commande UIDL qui consiste a associer un identificateur unique à chaque message.
+	-le serveur envoie un accusé
+	-il renvoie également +OK
+	-le client envoie le nom de session de la machine serveur.local.demo sur laquelle il veut récupérer le mail précédé la commande USER
+	-le serveur répond +OK
+	-le client envoie le mot de passe avec la commande précédé de la commande PASS
+	-Dans notre cas (testé à la maison), le serveur renvoie une erreur via : -ERR (erreur interne)
+	-le client veut donc fermer la connexion avec QUIT
+	-le serveur ferme la connexion TCP.
+Si l'erreur ne s'était pas produite, on aurait eu un échange de commandes en pop3 : STAT pour récupérer le nombre et la taille des messages, RETR 1 pour récupérer le message numéro 1 dans la file et d'accusés de réception en tcp.
+
+FTP :
+Le serveur ftp se situe sur la machine serveur 192.168.1.1.
+Il y a syncronisation avec le serveur, on retrouve la réponse 220 : server ready comme avec un serveur SMTP. Le client envoie ensuite la commande user suivie du nom d'utilisateur shouaité, le serveur demande le mot de passe (code 331) qui est envoyé par le client grâce à la commande PASS. SI les idenfiants sont corrects, le serveur envoie le code 230 : user logged in. Le client demande la répertoire courant : commandepwd et le serveur lui répond. Le client demande un échange de charactères type A (ASCII), le serveur lui renvoi qu'il a compris avec le code 200. Un port est demandé par le client, le serveur lui répond ok. Le client envoie la commande list (équivalent commande ls), une nouvelle connection tcp s'ouvre suite à cette demande le serveur envoie les données sur le répertoire avant de fermer la connection TCP qui venait de s'ouvrir. Après les accusés de réception, le serveur envoie le code 226 pour confirmation de l'envoi précédent a été effectué. Quand on veut changer de répertoire, on envoie la commande cwd au serveur, aucune connexion TCP n'est crée car le changement se fait uniquement pour le serveur, par contre, le client doit afficher la liste des éléments dans le nouveau répertoire et doit envoyer la commade list et cette fois ouvrir une connexion TCP. Pour le transfert de fichiers, le client demande un transfert de type I pour binaire, puis la commande RETR suivie du nom du fichier voulu, une connexion TCP est ouverte et le serveur envoie le contenu du fichier avec ses propriétés telles que son nom, ses droits, ...
+
+On peut rejouer l'échnage avec telnet en se connectant au serveur avec la commande `telnet <ip> <port>`. Puis on rentre le nom d'utlisateur et le mot de passe via USER et PASS. On peut ensuite faire un LIST, PWD, CWD, RETR <nom_du_fichier>, ...
+
+HTTP :
+www.local.demo : apres un échange de trames DNS pour déterminer l'adresse IP de la machine www.local.demo (ici c'est 192.168.1.1 le serveur) il y a synchronisation, le client demande la page http, le serveur lui envoie et fin de connexion de la part du client qui a recu la page.
+Pour le reste, étant donné que cette partie est faite à la maison, on suppose que la machine client peut convenablement accéder à un serveur interne à l'université. Par contre, le machine client ne va pas réussir à se connecter à un serveur externe car l'université utilise un proxy. On concoit que la manipulation marche avec l'ajout de la variable http_proxy.  
